@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme nền cho Splash Screen -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Đặt màu nền giống màu darkBg (#0F172A) trong HTML của bạn -->
+        <item name="windowSplashScreenBackground">#0F172A</item>
+        <item name="postSplashScreenTheme">@android:style/Theme.NoTitleBar</item>
+    </style>
+</resources>
