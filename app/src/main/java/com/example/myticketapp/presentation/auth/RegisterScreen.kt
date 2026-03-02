@@ -1,5 +1,6 @@
 package com.example.myticketapp.presentation.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,10 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,16 +27,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myticketapp.ui.theme.PrimaryPink
 
 @Composable
 fun RegisterScreen(
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    viewModel: RegisterViewModel = hiltViewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -41,11 +47,38 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    val state = viewModel.state.value
+    val context = LocalContext.current
+
+    // Xử lý thông báo lỗi và thành công
+    LaunchedEffect(state.error, state.isSuccess) {
+        if (state.error.isNotBlank()) {
+            Toast.makeText(context, state.error, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+        if (state.isSuccess) {
+            Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+            onNavigateToLogin()
+        }
+    }
+
+    // Modal OTP (Hiện lên khi state.showOtpModal = true)
+    if (state.showOtpModal) {
+        OtpModal(
+            email = email,
+            timer = state.otpTimer,
+            isLoading = state.isLoading,
+            onVerify = { code -> viewModel.verifyOtpAndRegister(code) },
+            onResend = { viewModel.sendOtp(phone, email) },
+            onClose = { viewModel.closeOtpModal() }
+        )
+    }
+
     AuthBackground {
         Column(
             modifier = Modifier
                 .padding(24.dp)
-                .verticalScroll(rememberScrollState()), // Thêm scroll vì form đăng ký dài
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TixConLogo()
@@ -105,7 +138,17 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
 
-            AuthButton(text = "Đăng ký", onClick = { /* Xử lý đăng ký */ })
+            // Nút bấm đăng ký
+            if (state.isLoading && !state.showOtpModal) {
+                CircularProgressIndicator(color = PrimaryPink)
+            } else {
+                AuthButton(
+                    text = "TẠO TÀI KHOẢN",
+                    onClick = {
+                        viewModel.onRegisterClick(name, phone, email, password, confirmPassword)
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

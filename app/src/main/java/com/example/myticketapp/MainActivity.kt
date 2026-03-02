@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myticketapp.presentation.auth.LoginScreen
 import com.example.myticketapp.presentation.auth.RegisterScreen
+import com.example.myticketapp.presentation.home.HomeScreen
 import com.example.myticketapp.presentation.splash.SplashScreen
 import com.example.myticketapp.ui.theme.MyTicketAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,9 +21,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Cài đặt thư viện core-splashscreen TRƯỚC onCreate
         installSplashScreen()
-
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -31,10 +30,10 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
 
                     NavHost(navController = navController, startDestination = "splash") {
+                        // 1. Màn hình Splash
                         composable("splash") {
                             SplashScreen(
                                 onNavigateToHome = {
-                                    // Sau khi splash xong, chuyển đến màn hình Đăng nhập
                                     navController.navigate("login") {
                                         popUpTo("splash") { inclusive = true }
                                     }
@@ -42,19 +41,31 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        // 2. Màn hình Login
                         composable("login") {
                             LoginScreen(
                                 onNavigateToRegister = { navController.navigate("register") },
                                 onLoginSuccess = {
-                                    // TODO: Chuyển sang HomeScreen sau này
+                                    // Điều hướng sang trang Home
+                                    navController.navigate("home") {
+                                        // Xóa màn hình login khỏi ngăn xếp (backstack)
+                                        // để ấn nút Back không bị quay lại trang đăng nhập
+                                        popUpTo("login") { inclusive = true }
+                                    }
                                 }
                             )
                         }
 
+                        // 3. Màn hình Register
                         composable("register") {
                             RegisterScreen(
-                                onNavigateToLogin = { navController.navigateUp() } // Trở về Login
+                                onNavigateToLogin = { navController.navigateUp() }
                             )
+                        }
+
+                        // 4. Màn hình Home (Mới thêm)
+                        composable("home") {
+                            HomeScreen()
                         }
                     }
                 }

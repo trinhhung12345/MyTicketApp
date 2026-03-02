@@ -43,3 +43,24 @@ fun UserDto.toDomainModel(): User {
         accessToken = this.accessToken
     )
 }
+
+// Request Body cho gửi OTP
+data class SendOtpRequest(
+    val phone: String,
+    val email: String,
+    val type: String = "1",
+    val purpose: String = "1"
+)
+
+// Request Body cho đăng ký (DTO)
+data class RegisterRequestDto(
+    val accountPhone: String,
+    val email: String,
+    val accountName: String,
+    val password: String,
+    val confirmPassword: String,
+    val code: String, // Mã OTP
+    val type: String = "1",
+    val businessRole: Int = 1,
+    val purpose: String = "1"
+)
