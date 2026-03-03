@@ -1,8 +1,11 @@
 package com.example.myticketapp.data.di
 
 import com.example.myticketapp.data.remote.api.AuthApi
+import com.example.myticketapp.data.remote.api.HomeApi
 import com.example.myticketapp.data.repository.AuthRepositoryImpl
+import com.example.myticketapp.data.repository.HomeRepositoryImpl
 import com.example.myticketapp.domain.repository.AuthRepository
+import com.example.myticketapp.domain.repository.HomeRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +25,19 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideHomeApi(retrofit: Retrofit): HomeApi {
+        return retrofit.create(HomeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(api: AuthApi): AuthRepository {
         return AuthRepositoryImpl(api)
+    }
+
+    @Provides
+    @Singleton
+    fun provideHomeRepository(api: HomeApi): HomeRepository {
+        return HomeRepositoryImpl(api)
     }
 }

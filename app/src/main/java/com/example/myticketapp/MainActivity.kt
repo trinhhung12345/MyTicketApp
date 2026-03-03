@@ -3,6 +3,7 @@ package com.example.myticketapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +23,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -46,10 +48,7 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(
                                 onNavigateToRegister = { navController.navigate("register") },
                                 onLoginSuccess = {
-                                    // Điều hướng sang trang Home
                                     navController.navigate("home") {
-                                        // Xóa màn hình login khỏi ngăn xếp (backstack)
-                                        // để ấn nút Back không bị quay lại trang đăng nhập
                                         popUpTo("login") { inclusive = true }
                                     }
                                 }
@@ -63,7 +62,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 4. Màn hình Home (Mới thêm)
+                        // 4. Màn hình Home
                         composable("home") {
                             HomeScreen()
                         }
