@@ -35,18 +35,19 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(project(":domain"))
-    
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    
+
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.gson)
-    
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

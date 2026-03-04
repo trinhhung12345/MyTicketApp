@@ -33,10 +33,10 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    
+
     // Hilt cho domain module
     implementation(libs.hilt.android)
-    
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

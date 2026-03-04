@@ -1,5 +1,6 @@
 package com.example.myticketapp.data.di
 
+import com.example.myticketapp.data.local.TokenDataStore
 import com.example.myticketapp.data.remote.api.AuthApi
 import com.example.myticketapp.data.remote.api.HomeApi
 import com.example.myticketapp.data.repository.AuthRepositoryImpl
@@ -31,8 +32,8 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(api: AuthApi): AuthRepository {
-        return AuthRepositoryImpl(api)
+    fun provideAuthRepository(api: AuthApi, tokenDataStore: TokenDataStore): AuthRepository {
+        return AuthRepositoryImpl(api, tokenDataStore)
     }
 
     @Provides

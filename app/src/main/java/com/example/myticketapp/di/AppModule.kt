@@ -17,7 +17,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             // Chỉ in log API khi đang chạy debug, lên production sẽ tắt để bảo mật
             level = if (BuildConfig.DEBUG) {
@@ -28,6 +28,7 @@ object AppModule {
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()
     }

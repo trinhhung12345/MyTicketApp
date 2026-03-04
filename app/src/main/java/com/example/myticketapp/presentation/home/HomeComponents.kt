@@ -242,10 +242,11 @@ fun FeaturedEventCard(
     date: String,
     price: String,
     tag: String,
-    tagColor: Color
+    tagColor: Color,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(300.dp)
             .aspectRatio(4f / 3f)
             .clip(RoundedCornerShape(16.dp))

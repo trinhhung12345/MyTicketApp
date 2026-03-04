@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 
 // Colors mapped from your HTML
@@ -26,7 +27,13 @@ val DarkBg = Color(0xFF0F172A)
 val BrandPink = Color(0xFFFF2D78)
 
 @Composable
-fun SplashScreen(onNavigateToHome: () -> Unit) {
+fun SplashScreen(
+    onNavigateToHome: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
+    val state by viewModel.state.collectAsState()
+
     // Animation States
     var isVisible by remember { mutableStateOf(false) }
 
@@ -37,11 +44,20 @@ fun SplashScreen(onNavigateToHome: () -> Unit) {
         label = "fade_in"
     )
 
-    // Trigger navigation after 3 seconds
-    LaunchedEffect(Unit) {
-        isVisible = true
-        delay(3000)
-        onNavigateToHome()
+    // Xử lý navigation dựa trên token
+    LaunchedEffect(state.isLoading, state.hasToken) {
+        if (!state.isLoading) {
+            isVisible = true
+            delay(1500) // Hiển thị logo đẹp 1.5s
+
+            if (state.hasToken) {
+                // Có token -> Về Home (auto login thành công)
+                onNavigateToHome()
+            } else {
+                // Không có token -> Về Login
+                onNavigateToLogin()
+            }
+        }
     }
 
     Box(

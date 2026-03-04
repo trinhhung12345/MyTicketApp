@@ -1,9 +1,14 @@
 package com.example.myticketapp.presentation.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -13,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.myticketapp.domain.model.Event
 import com.example.myticketapp.ui.theme.PrimaryPink
 import java.text.DecimalFormat
+import kotlinx.coroutines.delay
 
 // Hàm hỗ trợ format tiền tệ
 fun Long.formatVND(): String {
@@ -29,7 +36,10 @@ val mockImg2 =
     "https://lh3.googleusercontent.com/aida-public/AB6AXuCUmNv0uDCseAHhSAjjDPErFtyM__2JJlN9JE-RsDXSBo77CEVpNSf627KYDBMJx3VoGHJ_9htQ69yQdVX69f21qQgbhzT156mqTibhUEspEMUZqv7i7Db-a8e7BLjRjzi192gvPO1GYEA618_5apNA4C7AwAHl_Kf-c3tGpmZE3Yc9ymjgIZfvJLAs5C8GPmPGXiA3MdpAmvQEOqF-YqW7vBqyI7lFHBxpBFE3CnIWjlkEHo_Lwbph-dIS1PXSegy8Bpy1_TqDN00"
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    onEventClick: (Int) -> Unit,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
     val state = viewModel.state.value
     var selectedTab by remember { mutableStateOf("Tất cả") }
 
@@ -121,37 +131,19 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                 date = event.startDate,
                                 price = event.minPrice.formatVND(),
                                 tag = "HOT",
-                                tagColor = PrimaryPink
+                                tagColor = PrimaryPink,
+                                modifier = Modifier.clickable { onEventClick(event.id) }
                             )
                         }
                     }
                 }
             }
 
-            // 3. Sự kiện Đặc Sắc (Grid)
+            // 3. Sự kiện Đặc Sắc (Carousel)
             if (state.specialEvents.isNotEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    SectionHeader("Sự kiện đặc sắc", showViewAll = false)
-                    
-                    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Chia list thành các cặp 2 phần tử để vẽ thành dòng (Row)
-                        val chunkedEvents = state.specialEvents.chunked(2)
-                        chunkedEvents.forEach { rowEvents ->
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                rowEvents.forEach { event ->
-                                    SquareEventCard(
-                                        imageUrl = event.thumbnailUrl,
-                                        title = event.title,
-                                        subtitle = event.venue,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                // Nếu dòng lẻ chỉ có 1 phần tử, thêm Spacer để lấp khoảng trống
-                                if (rowEvents.size == 1) Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
+                    SpecialEventsCarousel(events = state.specialEvents, onEventClick = onEventClick)
                 }
             }
 
@@ -168,11 +160,105 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                 SquareEventCard(
                                     imageUrl = event.thumbnailUrl,
                                     title = event.title,
-                                    subtitle = event.venue
+                                    subtitle = event.venue,
+                                    modifier = Modifier.clickable { onEventClick(event.id) }
                                 )
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpecialEventsCarousel(
+    events: List<Event>,
+    onEventClick: (Int) -> Unit
+) {
+    val pages = remember(events) { events.chunked(2) }
+    val pageCount = pages.size
+    val pagerState = rememberPagerState(initialPage = 0) { pageCount }
+    var isForward by remember(pageCount) { mutableStateOf(true) }
+
+    LaunchedEffect(pageCount) {
+        if (pageCount <= 1) return@LaunchedEffect
+
+        while (true) {
+            delay(3000)
+
+            val currentPage = pagerState.currentPage
+            val lastPage = pageCount - 1
+
+            val nextPage = if (isForward) {
+                if (currentPage >= lastPage) {
+                    isForward = false
+                    (currentPage - 1).coerceAtLeast(0)
+                } else {
+                    currentPage + 1
+                }
+            } else {
+                if (currentPage <= 0) {
+                    isForward = true
+                    (currentPage + 1).coerceAtMost(lastPage)
+                } else {
+                    currentPage - 1
+                }
+            }
+
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SectionHeader("Sự kiện đặc sắc", showViewAll = false)
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) { page ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                pages[page].forEach { event ->
+                    SquareEventCard(
+                        imageUrl = event.thumbnailUrl,
+                        title = event.title,
+                        subtitle = event.venue,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onEventClick(event.id) }
+                    )
+                }
+
+                if (pages[page].size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        if (pageCount > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(pageCount) { index ->
+                    val color = if (pagerState.currentPage == index) PrimaryPink else Color(0xFF374151)
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(8.dp)
+                            .background(color = color, shape = CircleShape)
+                    )
                 }
             }
         }

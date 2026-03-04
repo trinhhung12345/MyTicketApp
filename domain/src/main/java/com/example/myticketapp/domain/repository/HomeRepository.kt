@@ -7,4 +7,5 @@ import kotlinx.coroutines.flow.Flow
 interface HomeRepository {
     fun getCategories(): Flow<Resource<List<Category>>>
     fun getEvents(): Flow<Resource<List<Event>>>
+    fun getEventDetail(id: Int): Flow<Resource<Event>>
 }

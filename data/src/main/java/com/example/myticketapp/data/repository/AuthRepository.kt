@@ -1,5 +1,6 @@
 package com.example.myticketapp.data.repository
 
+import com.example.myticketapp.data.local.TokenDataStore
 import com.example.myticketapp.data.remote.api.AuthApi
 import com.example.myticketapp.data.remote.dto.LoginRequest
 import com.example.myticketapp.data.remote.dto.RegisterRequestDto
@@ -16,7 +17,8 @@ import java.io.IOException
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
-    private val api: AuthApi
+    private val api: AuthApi,
+    private val tokenDataStore: TokenDataStore
 ) : AuthRepository {
 
     override fun login(email: String, password: String): Flow<Resource<User>> = flow {
@@ -83,5 +85,13 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             emit(Resource.Error("Đã xảy ra lỗi: ${e.message}"))
         }
+    }
+
+    override suspend fun saveToken(token: String, email: String) {
+        tokenDataStore.saveToken(token, email)
+    }
+
+    override suspend fun clearToken() {
+        tokenDataStore.clearToken()
     }
 }

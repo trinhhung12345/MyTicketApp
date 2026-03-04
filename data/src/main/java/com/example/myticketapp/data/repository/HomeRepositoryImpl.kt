@@ -33,4 +33,27 @@ class HomeRepositoryImpl @Inject constructor(
             } else emit(Resource.Error("Lỗi tải sự kiện"))
         } catch (e: Exception) { emit(Resource.Error(e.message ?: "Lỗi mạng")) }
     }
+
+    override fun getEventDetail(id: Int): Flow<Resource<Event>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = api.getEventDetail(id)
+            when (response.code) {
+                200 -> {
+                    if (response.data != null) {
+                        emit(Resource.Success(response.data.toDomain()))
+                    } else {
+                        emit(Resource.Error("Dữ liệu trống"))
+                    }
+                }
+                401 -> {
+                    // Đánh dấu lỗi 401 để UI biết đường đá văng ra Login
+                    emit(Resource.Error("TOKEN_EXPIRED"))
+                }
+                else -> emit(Resource.Error(response.message ?: "Lỗi không xác định"))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Lỗi mạng"))
+        }
+    }
 }
