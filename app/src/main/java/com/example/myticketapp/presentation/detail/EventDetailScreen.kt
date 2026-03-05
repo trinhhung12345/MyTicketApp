@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +24,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -32,8 +34,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.myticketapp.domain.model.Showing
+import com.example.myticketapp.navigation.Screen
 import com.example.myticketapp.presentation.home.formatVND
 import com.example.myticketapp.ui.theme.PrimaryPink
 import java.text.SimpleDateFormat
@@ -46,6 +53,7 @@ val DarkCard = Color(0xFF161B22)
 fun EventDetailScreen(
     onBackClick: () -> Unit,
     onTokenExpired: () -> Unit, // Callback văng ra Login
+    navController: NavController,
     viewModel: EventDetailViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
@@ -75,14 +83,15 @@ fun EventDetailScreen(
 
     val event = state.event
     if (event != null) {
-        EventDetailContent(event = event, onBackClick = onBackClick)
+        EventDetailContent(event = event, onBackClick = onBackClick, navController = navController)
     }
 }
 
 @Composable
 private fun EventDetailContent(
     event: com.example.myticketapp.domain.model.Event,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    navController: NavController
 ) {
     val expandedShowingIds = rememberSaveable(
         saver = listSaver(
@@ -90,6 +99,8 @@ private fun EventDetailContent(
             restore = { it.toMutableStateList() }
         )
     ) { mutableStateListOf<Int>() }
+
+    var showShowingSelection by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
 
@@ -316,7 +327,9 @@ private fun EventDetailContent(
                                 }
 
                                 Button(
-                                    onClick = { /* Mở Modal chọn hạng vé */ },
+                                    onClick = { 
+                                        navController.navigate(Screen.Booking.passShowingId(showing.id))
+                                    },
                                     enabled = showing.isSalable,
                                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
                                     shape = RoundedCornerShape(8.dp),
@@ -415,12 +428,149 @@ private fun EventDetailContent(
                 Text(event.minPrice.formatVND().replace("Từ ", ""), color = PrimaryPink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Button(
-                onClick = { /* Chuyển hướng sang màn mua vé */ },
+                onClick = {
+                    if (event.showings.size >= 2) {
+                        showShowingSelection = true
+                    } else if (event.showings.size == 1) {
+                        navController.navigate(Screen.Booking.passShowingId(event.showings[0].id))
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.width(160.dp).height(48.dp)
             ) {
                 Text("Đặt vé ngay", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (showShowingSelection) {
+            ShowingSelectionDialog(
+                showings = event.showings,
+                onDismiss = { showShowingSelection = false },
+                onShowingSelected = { showing ->
+                    showShowingSelection = false
+                    navController.navigate(Screen.Booking.passShowingId(showing.id))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ShowingSelectionDialog(
+    showings: List<Showing>,
+    onDismiss: () -> Unit,
+    onShowingSelected: (Showing) -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF0F172A))
+                    .clickable(enabled = false) {}
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column {
+                        Text(
+                            text = "Chọn suất diễn",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Vui lòng chọn suất diễn bạn muốn tham gia",
+                            color = Color.Gray,
+                            fontSize = 13.sp
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = PrimaryPink,
+                            modifier = Modifier.border(1.dp, PrimaryPink, CircleShape).padding(2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(showings) { showing ->
+                        val isSalable = showing.isSalable
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1E293B))
+                                .clickable(enabled = isSalable) { onShowingSelected(showing) }
+                                .padding(16.dp)
+                                .alpha(if (isSalable) 1f else 0.5f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = showing.startTime.formatToTime(), // Hoặc format range nếu có data
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = showing.startTime.formatToDate(),
+                                    color = Color.Gray,
+                                    fontSize = 13.sp
+                                )
+                            }
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!isSalable) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFF334155), RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "HẾT VÉ",
+                                            color = Color.Red.copy(alpha = 0.7f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ConfirmationNumber,
+                                    contentDescription = null,
+                                    tint = PrimaryPink,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
