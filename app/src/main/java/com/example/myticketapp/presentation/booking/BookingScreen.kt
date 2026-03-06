@@ -78,25 +78,31 @@ fun BookingScreen(
             BookingTopBar(
                 eventName = viewModel.eventName,
                 showingTime = viewModel.showingTime,
-                cartCount = state.selectedSeats.size,
+                cartCount = if (state.hasSeatMap) state.selectedSeats.size else state.totalTickets,
                 onBackClick = onBackClick,
-                onCartClick = {
-                    if (state.selectedSeats.isNotEmpty()) isCartExpanded = !isCartExpanded
+                onCartClick = { 
+                    if (state.hasSeatMap && state.selectedSeats.isNotEmpty()) {
+                        isCartExpanded = !isCartExpanded
+                    }
                 }
             )
         },
         bottomBar = {
-            AnimatedVisibility(
-                visible = state.selectedSeats.isNotEmpty(),
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
-            ) {
+            // PHÂN LUỒNG BOTTOM BAR
+            if (state.hasSeatMap && state.selectedSeats.isNotEmpty()) {
                 ExpandableCartBottomBar(
                     state = state,
                     currentSectionName = currentSectionName,
                     isExpanded = isCartExpanded,
                     onToggleExpand = { isCartExpanded = !isCartExpanded },
                     onRemoveSeat = { viewModel.removeSeat(it) },
+                    onCheckout = { /* TODO: Navigate to checkout */ }
+                )
+            } 
+            else if (!state.hasSeatMap) {
+                TicketListBottomBar(
+                    totalTickets = state.totalTickets,
+                    totalPrice = state.totalPrice,
                     onCheckout = { /* TODO: Navigate to checkout */ }
                 )
             }
@@ -107,25 +113,24 @@ fun BookingScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                state.isLoading -> {
-                    CircularProgressIndicator(
-                        color = PrimaryPink,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                state.error.isNotEmpty() -> {
-                    Text(
-                        text = state.error,
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp)
-                    )
-                }
-                state.seatMap != null -> {
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    color = PrimaryPink,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else if (state.error.isNotEmpty()) {
+                Text(
+                    text = state.error,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                )
+            } else {
+                // PHÂN LUỒNG BODY CHÍNH
+                if (state.hasSeatMap) {
                     ZoomableSeatMap(
-                        viewboxWidth = state.seatMap.viewboxWidth,
-                        viewboxHeight = state.seatMap.viewboxHeight,
-                        sections = state.seatMap.sections,
+                        viewboxWidth = state.seatMap!!.viewboxWidth,
+                        viewboxHeight = state.seatMap!!.viewboxHeight,
+                        sections = state.seatMap!!.sections,
                         selectedSeatIds = state.selectedSeats.map { it.id }.toSet(),
                         onSectionClick = { section ->
                             if (!section.isStage) clickedSection = section
@@ -134,7 +139,7 @@ fun BookingScreen(
 
                     // Section legend bottom-left
                     SectionLegend(
-                        sections = state.seatMap.sections.filter { !it.isStage },
+                        sections = state.seatMap!!.sections.filter { !it.isStage },
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .padding(start = 12.dp, bottom = 12.dp)
@@ -144,21 +149,32 @@ fun BookingScreen(
                     ZoomHint(
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
+                } else {
+                    // VẼ DANH SÁCH CHỌN VÉ (Không có Map)
+                    TicketTypeSelectionScreen(
+                        ticketTypes = state.ticketTypes,
+                        quantities = state.ticketQuantities,
+                        onQuantityChange = { ticketType, delta ->
+                            viewModel.updateTicketQuantity(ticketType, delta)
+                        }
+                    )
                 }
             }
         }
     }
 
-    // Seat selection dialog
-    clickedSection?.let { section ->
-        SeatSelectionDialog(
-            eventName = viewModel.eventName,
-            showingTime = viewModel.showingTime,
-            section = section,
-            selectedSeats = state.selectedSeats.toSet(),
-            onSeatToggle = { seat -> viewModel.toggleSeat(seat, section) },
-            onDismiss = { clickedSection = null }
-        )
+    // Seat selection dialog - only for seat map mode
+    if (state.hasSeatMap) {
+        clickedSection?.let { section ->
+            SeatSelectionDialog(
+                eventName = viewModel.eventName,
+                showingTime = viewModel.showingTime,
+                section = section,
+                selectedSeats = state.selectedSeats.toSet(),
+                onSeatToggle = { seat -> viewModel.toggleSeat(seat, section) },
+                onDismiss = { clickedSection = null }
+            )
+        }
     }
 }
 

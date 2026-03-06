@@ -5,6 +5,7 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
     object Home : Screen("home")
+    object Profile : Screen("profile")
     object EventDetail : Screen("event_detail/{eventId}") {
         fun passId(eventId: Int): String {
             return "event_detail/$eventId"

@@ -53,13 +53,15 @@ val DarkCard = Color(0xFF161B22)
 
 // --- 1. Top Bar & Search ---
 @Composable
-fun HomeTopBar() {
+fun HomeTopBar(
+    onProfileClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(DarkBg.copy(alpha = 0.95f))
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -103,7 +105,10 @@ fun HomeTopBar() {
                     modifier = Modifier.size(24.dp)
                 )
                 Box(
-                    modifier = Modifier.size(32.dp).background(PrimaryPink, CircleShape),
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(PrimaryPink, CircleShape)
+                        .clickable { onProfileClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -116,7 +121,7 @@ fun HomeTopBar() {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp)) // Giảm thêm một chút khoảng cách tới thanh Search
 
         // Search Bar
         var searchQuery by remember { mutableStateOf("") }
@@ -124,7 +129,7 @@ fun HomeTopBar() {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkCard, RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -164,7 +169,7 @@ fun CategoryTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         categories.forEach { category ->
@@ -202,7 +207,7 @@ fun SectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

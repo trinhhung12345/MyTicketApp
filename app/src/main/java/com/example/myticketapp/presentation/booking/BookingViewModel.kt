@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myticketapp.domain.model.Seat
 import com.example.myticketapp.domain.model.SeatMap
 import com.example.myticketapp.domain.model.Section
+import com.example.myticketapp.domain.model.TicketType
 import com.example.myticketapp.domain.repository.BookingRepository
 import com.example.myticketapp.domain.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,12 +18,23 @@ import javax.inject.Inject
 
 data class BookingState(
     val isLoading: Boolean = true,
+    
+    // Data gốc
     val seatMap: SeatMap? = null,
+    val ticketTypes: List<TicketType> = emptyList(),
+    val hasSeatMap: Boolean = false, // Cờ để UI biết phải vẽ cái gì
+    
+    // State cho chế độ SeatMap (Như cũ)
     val selectedSeats: List<Seat> = emptyList(),
-    val currentSectionId: Int? = null, // Lưu ID của khu vực đang chọn
+    val currentSectionId: Int? = null,
+    
+    // State cho chế độ TicketList (Không sơ đồ)
+    val ticketQuantities: Map<Int, Int> = emptyMap(), // Lưu: TicketTypeId -> Số lượng
+    val totalTickets: Int = 0,
+    
     val totalPrice: Long = 0L,
     val error: String = "",
-    val uiEvent: String = "" // Dùng để bắn Toast (vd: "Chỉ được chọn 1 khu vực")
+    val uiEvent: String = ""
 )
 
 @HiltViewModel
@@ -40,16 +52,21 @@ class BookingViewModel @Inject constructor(
 
     init {
         val showingId = savedStateHandle.get<Int>("showingId") ?: 4 // Default là 4 để test
-        fetchSeatMap(showingId)
+        fetchBookingData(showingId)
     }
 
-    private fun fetchSeatMap(showingId: Int) {
-        repository.getSeatMap(showingId).onEach { result ->
+    private fun fetchBookingData(showingId: Int) {
+        repository.getBookingData(showingId).onEach { result ->
             when (result) {
                 is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
                 is Resource.Success -> {
-                    // API trả về List, ta lấy phần tử đầu tiên
-                    _state.value = _state.value.copy(isLoading = false, seatMap = result.data)
+                    val data = result.data
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        seatMap = data?.seatMap,
+                        ticketTypes = data?.ticketTypes ?: emptyList(),
+                        hasSeatMap = data?.seatMap != null // Đặt cờ
+                    )
                 }
                 is Resource.Error -> _state.value = _state.value.copy(isLoading = false, error = result.message ?: "Lỗi")
             }
@@ -104,6 +121,51 @@ class BookingViewModel @Inject constructor(
             currentSectionId = sectionId,
             totalPrice = total,
             uiEvent = "" // Clear event cũ
+        )
+    }
+
+    // Hàm mới: Xử lý nút [+] và [-]
+    fun updateTicketQuantity(ticketType: TicketType, delta: Int) {
+        val currentState = _state.value
+        val currentQty = currentState.ticketQuantities[ticketType.id] ?: 0
+        val newQty = currentQty + delta
+
+        // Chặn số lượng âm
+        if (newQty < 0) return
+
+        // Chặn giới hạn mua tối đa (maxQtyPerOrder) và vé tồn kho
+        if (delta > 0) {
+            if (newQty > ticketType.maxQtyPerOrder) {
+                _state.value = currentState.copy(uiEvent = "Bạn chỉ được mua tối đa ${ticketType.maxQtyPerOrder} vé loại này!")
+                return
+            }
+            if (newQty > ticketType.remainingQuantity) {
+                _state.value = currentState.copy(uiEvent = "Loại vé này chỉ còn ${ticketType.remainingQuantity} vé!")
+                return
+            }
+        }
+
+        // Cập nhật Map
+        val newMap = currentState.ticketQuantities.toMutableMap()
+        if (newQty == 0) {
+            newMap.remove(ticketType.id)
+        } else {
+            newMap[ticketType.id] = newQty
+        }
+
+        // Tính lại tổng tiền và tổng vé
+        var total = 0L
+        var count = 0
+        newMap.forEach { (id, qty) ->
+            val type = currentState.ticketTypes.find { it.id == id }
+            total += (type?.price ?: 0L) * qty
+            count += qty
+        }
+
+        _state.value = currentState.copy(
+            ticketQuantities = newMap,
+            totalPrice = total,
+            totalTickets = count
         )
     }
 

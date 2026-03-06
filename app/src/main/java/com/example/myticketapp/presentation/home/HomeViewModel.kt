@@ -1,5 +1,6 @@
 package com.example.myticketapp.presentation.home
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val TAG = "HomeViewModel"
+
 data class HomeState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
@@ -23,7 +26,8 @@ data class HomeState(
     val featuredEvents: List<Event> = emptyList(), // Nổi bật (Banner)
     val specialEvents: List<Event> = emptyList(),  // Đặc sắc (Grid)
     val eventsByCategory: Map<String, List<Event>> = emptyMap(), // Dùng cho các danh sách ngang phía dưới
-    val error: String = ""
+    val error: String = "",
+    val showSessionExpiredDialog: Boolean = false
 )
 
 @HiltViewModel
@@ -53,10 +57,26 @@ class HomeViewModel @Inject constructor(
 
     private fun fetchCategories() {
         repository.getCategories().onEach { result ->
-            if (result is Resource.Success) {
-                // Thêm chữ "Tất cả" vào đầu list category cho UI
-                val allCats = listOf(Category(0, "Tất cả")) + (result.data ?: emptyList())
-                _state.value = _state.value.copy(categories = allCats)
+            when (result) {
+                is Resource.Loading -> {
+                    // Không làm gì khi loading
+                }
+                is Resource.Success -> {
+                    // Thêm chữ "Tất cả" vào đầu list category cho UI
+                    val allCats = listOf(Category(0, "Tất cả")) + (result.data ?: emptyList())
+                    _state.value = _state.value.copy(categories = allCats)
+                }
+                is Resource.Error -> {
+                    Log.d(TAG, "fetchCategories error: ${result.message}")
+                    if (result.message == "TOKEN_EXPIRED") {
+                        Log.d(TAG, "fetchCategories: Setting showSessionExpiredDialog = true")
+                        _state.value = _state.value.copy(
+                            showSessionExpiredDialog = true
+                        )
+                        // Hủy polling để tránh gọi lại liên tục khi token hết hạn
+                        pollingJob?.cancel()
+                    }
+                }
             }
         }.launchIn(viewModelScope)
     }
@@ -74,14 +94,14 @@ class HomeViewModel @Inject constructor(
                 }
                 is Resource.Success -> {
                     val allEvents = result.data ?: emptyList()
-                    
+
                     // --- LOGIC PHÂN LOẠI FRONT-END ---
                     // 1. Nổi bật: Lấy 2 event đầu tiên
                     val featured = allEvents.take(2)
-                    
+
                     // 2. Đặc sắc: Bỏ qua 2 cái đầu, lấy 4 cái tiếp theo
                     val special = allEvents.drop(2).take(4)
-                    
+
                     // 3. Phân nhóm theo CategoryName (Ví dụ: POP có 3 sự kiện, Rock có 2 sự kiện...)
                     val byCategory = allEvents.groupBy { it.categoryName }
 
@@ -93,7 +113,21 @@ class HomeViewModel @Inject constructor(
                         eventsByCategory = byCategory
                     )
                 }
-                is Resource.Error -> _state.value = _state.value.copy(isLoading = false, isRefreshing = false, error = result.message ?: "Lỗi")
+                is Resource.Error -> {
+                    Log.d(TAG, "fetchEvents error: ${result.message}")
+                    if (result.message == "TOKEN_EXPIRED") {
+                        Log.d(TAG, "fetchEvents: Setting showSessionExpiredDialog = true")
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            showSessionExpiredDialog = true
+                        )
+                        // Hủy polling để tránh gọi lại liên tục khi token hết hạn
+                        pollingJob?.cancel()
+                    } else {
+                        _state.value = _state.value.copy(isLoading = false, isRefreshing = false, error = result.message ?: "Lỗi")
+                    }
+                }
             }
         }.launchIn(viewModelScope)
     }
@@ -107,14 +141,14 @@ class HomeViewModel @Inject constructor(
                 }
                 is Resource.Success -> {
                     val allEvents = result.data ?: emptyList()
-                    
+
                     // --- LOGIC PHÂN LOẠI FRONT-END ---
                     // 1. Nổi bật: Lấy 2 event đầu tiên
                     val featured = allEvents.take(2)
-                    
+
                     // 2. Đặc sắc: Bỏ qua 2 cái đầu, lấy 4 cái tiếp theo
                     val special = allEvents.drop(2).take(4)
-                    
+
                     // 3. Phân nhóm theo CategoryName (Ví dụ: POP có 3 sự kiện, Rock có 2 sự kiện...)
                     val byCategory = allEvents.groupBy { it.categoryName }
 
@@ -125,9 +159,26 @@ class HomeViewModel @Inject constructor(
                         eventsByCategory = byCategory
                     )
                 }
-                is Resource.Error -> _state.value = _state.value.copy(isRefreshing = false, error = result.message ?: "Lỗi")
+                is Resource.Error -> {
+                    Log.d(TAG, "refreshHome error: ${result.message}")
+                    if (result.message == "TOKEN_EXPIRED") {
+                        Log.d(TAG, "refreshHome: Setting showSessionExpiredDialog = true")
+                        _state.value = _state.value.copy(
+                            isRefreshing = false,
+                            showSessionExpiredDialog = true
+                        )
+                        // Hủy polling để tránh gọi lại liên tục khi token hết hạn
+                        pollingJob?.cancel()
+                    } else {
+                        _state.value = _state.value.copy(isRefreshing = false, error = result.message ?: "Lỗi")
+                    }
+                }
             }
         }.launchIn(viewModelScope)
+    }
+
+    fun onSessionExpiredConfirmed() {
+        _state.value = _state.value.copy(showSessionExpiredDialog = false)
     }
 
     override fun onCleared() {

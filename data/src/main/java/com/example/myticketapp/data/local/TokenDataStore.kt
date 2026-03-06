@@ -19,8 +19,8 @@ import javax.inject.Singleton
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
 /**
- * Singleton class quản lý việc lưu trữ và đọc Token từ DataStore
- * Sử dụng DataStore Preferences thay vì SharedPreferences để có flow support
+ * Singleton class quản lý việc lưu trữ và đọc dữ liệu User từ DataStore
+ * Lưu trữ: Token, Email, Address
  */
 @Singleton
 class TokenDataStore @Inject constructor(
@@ -29,6 +29,7 @@ class TokenDataStore @Inject constructor(
     companion object {
         val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        val USER_ADDRESS_KEY = stringPreferencesKey("user_address")
     }
 
     /**
@@ -40,6 +41,30 @@ class TokenDataStore @Inject constructor(
             preferences[USER_EMAIL_KEY] = email
         }
     }
+
+    /**
+     * Lưu địa chỉ user vào DataStore
+     */
+    suspend fun saveAddress(address: String) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_ADDRESS_KEY] = address
+        }
+    }
+
+    /**
+     * Đọc địa chỉ user từ DataStore dưới dạng Flow
+     */
+    val userAddress: Flow<String> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[USER_ADDRESS_KEY] ?: ""
+        }
 
     /**
      * Đọc access token từ DataStore dưới dạng Flow
@@ -78,6 +103,15 @@ class TokenDataStore @Inject constructor(
         context.dataStore.edit { preferences ->
             preferences.remove(ACCESS_TOKEN_KEY)
             preferences.remove(USER_EMAIL_KEY)
+        }
+    }
+
+    /**
+     * Xóa toàn bộ dữ liệu khi đăng xuất
+     */
+    suspend fun clearSession() {
+        context.dataStore.edit { preferences ->
+            preferences.clear()
         }
     }
 

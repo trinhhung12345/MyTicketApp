@@ -29,16 +29,12 @@ fun Long.formatVND(): String {
     return "Từ ${formatter.format(this)} đ"
 }
 
-// Mock Data để giao diện hiển thị ảnh
-val mockImg1 =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuB-wjOFidXrpqO4X2h7cTRYlEhMjOSF9VGSJHD2Zj4NfCm9zzxidEJtrmb0c_3lzgEZqkeFAVK4qcYpHWR-dd4uBS9eQUr7bGP24yrLEbBxrx_DMebzzJXUcZcDtaHtPZcfuLwL_rMYllcpRpQNCmy0iidVdf6E-a-mCy0KMU9lnEO2DKaWqLsQiqzuR83TjsKSJA6I9Xyiq_Zvb0naI_rpOCZsPMHhobDjE9Pfx9nxNQF4n0q92VfJvQC8oclOg_8iwOzaG9rkVQ8"
-val mockImg2 =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuCUmNv0uDCseAHhSAjjDPErFtyM__2JJlN9JE-RsDXSBo77CEVpNSf627KYDBMJx3VoGHJ_9htQ69yQdVX69f21qQgbhzT156mqTibhUEspEMUZqv7i7Db-a8e7BLjRjzi192gvPO1GYEA618_5apNA4C7AwAHl_Kf-c3tGpmZE3Yc9ymjgIZfvJLAs5C8GPmPGXiA3MdpAmvQEOqF-YqW7vBqyI7lFHBxpBFE3CnIWjlkEHo_Lwbph-dIS1PXSegy8Bpy1_TqDN00"
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onEventClick: (Int) -> Unit,
+    onProfileClick: () -> Unit,
+    onSessionExpired: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
@@ -46,139 +42,150 @@ fun HomeScreen(
     val colorScheme = MaterialTheme.colorScheme
     val primaryColor = colorScheme.primary
 
-    Scaffold(
-        containerColor = DarkBg,
-        topBar = { HomeTopBar() },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* Mở chat */ },
-                containerColor = primaryColor,
-                contentColor = colorScheme.onPrimary,
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChatBubbleOutline,
-                    contentDescription = "Chat"
-                )
-            }
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = DarkCard.copy(alpha = 0.95f),
-                contentColor = colorScheme.onSurfaceVariant
-            ) {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { },
-                    icon = { Icon(Icons.Default.Home, null) },
-                    label = { Text("Trang chủ") },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = primaryColor,
-                        selectedTextColor = primaryColor,
-                        indicatorColor = Color.Transparent
-                    )
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Default.Search, null) },
-                    label = { Text("Tìm kiếm") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Default.ConfirmationNumber, null) },
-                    label = { Text("Vé của tôi") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Default.Person, null) },
-                    label = { Text("Cá nhân") }
-                )
-            }
-        }
-    ) { paddingValues ->
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = primaryColor)
-            }
-            return@Scaffold
-        }
+    // Sử dụng Box thay vì Scaffold lồng nhau để tránh paddingValues bị double hoặc tính toán sai
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Top Bar
+            HomeTopBar(onProfileClick = onProfileClick)
 
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = { viewModel.refreshHome() },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                // 1. Categories
-                item {
-                    CategoryTabs(
-                        categories = state.categories.map { it.name },
-                        selectedCategory = selectedTab,
-                        onSelect = { selectedTab = it }
-                    )
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = primaryColor)
                 }
+            } else {
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = { viewModel.refreshHome() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp) // Để tránh bị che bởi BottomBar
+                    ) {
+                        // 1. Categories
+                        item {
+                            CategoryTabs(
+                                categories = state.categories.map { it.name },
+                                selectedCategory = selectedTab,
+                                onSelect = { selectedTab = it }
+                            )
+                        }
 
-                // 2. Sự kiện Nổi Bật (Banner)
-                if (state.featuredEvents.isNotEmpty()) {
-                    item {
-                        SectionHeader("Sự kiện nổi bật")
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(state.featuredEvents) { event ->
-                                FeaturedEventCard(
-                                    imageUrl = event.thumbnailUrl,
-                                    title = event.title,
-                                    date = event.startDate,
-                                    price = event.minPrice.formatVND(),
-                                    tag = "HOT",
-                                    tagColor = primaryColor,
-                                    modifier = Modifier.clickable { onEventClick(event.id) }
-                                )
+                        // 2. Sự kiện Nổi Bật (Banner)
+                        if (state.featuredEvents.isNotEmpty()) {
+                            item {
+                                SectionHeader("Sự kiện nổi bật")
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    items(state.featuredEvents) { event ->
+                                        FeaturedEventCard(
+                                            imageUrl = event.thumbnailUrl,
+                                            title = event.title,
+                                            date = event.startDate,
+                                            price = event.minPrice.formatVND(),
+                                            tag = "HOT",
+                                            tagColor = primaryColor,
+                                            modifier = Modifier.clickable { onEventClick(event.id) }
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
-                }
 
-                // 3. Sự kiện Đặc Sắc (Carousel)
-                if (state.specialEvents.isNotEmpty()) {
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        SpecialEventsCarousel(events = state.specialEvents, onEventClick = onEventClick)
-                    }
-                }
+                        // 3. Sự kiện Đặc Sắc (Carousel)
+                        if (state.specialEvents.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp)) // Giảm từ 16.dp xuống 8.dp
+                                SpecialEventsCarousel(events = state.specialEvents, onEventClick = onEventClick)
+                            }
+                        }
 
-                // 4. Các mục danh sách ngang theo TỪNG CATEGORY (VD: POP, Rock...)
-                state.eventsByCategory.forEach { (categoryName, events) ->
-                    item {
-                        Column(modifier = Modifier.padding(top = 24.dp)) {
-                            SectionHeader(categoryName)
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                items(events) { event ->
-                                    SquareEventCard(
-                                        imageUrl = event.thumbnailUrl,
-                                        title = event.title,
-                                        subtitle = event.venue,
-                                        modifier = Modifier.clickable { onEventClick(event.id) }
-                                    )
+                        // 4. Các mục danh sách ngang theo TỪNG CATEGORY
+                        state.eventsByCategory.forEach { (categoryName, events) ->
+                            item {
+                                Column(modifier = Modifier.padding(top = 16.dp)) { // Giảm top padding từ 24.dp xuống 16.dp
+                                    SectionHeader(categoryName)
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        items(events) { event ->
+                                            SquareEventCard(
+                                                imageUrl = event.thumbnailUrl,
+                                                title = event.title,
+                                                subtitle = event.venue,
+                                                modifier = Modifier.clickable { onEventClick(event.id) }
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        // FAB - Đưa vào Box để nổi lên trên Column
+        FloatingActionButton(
+            onClick = { /* Mở chat */ },
+            containerColor = primaryColor,
+            contentColor = colorScheme.onPrimary,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChatBubbleOutline,
+                contentDescription = "Chat"
+            )
+        }
+
+        // Session Expired Dialog
+        if (state.showSessionExpiredDialog) {
+            AlertDialog(
+                onDismissRequest = { },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = primaryColor
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Phiên đăng nhập đã hết hạn",
+                        color = Color.White
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Vui lòng đăng nhập lại để tiếp tục",
+                        color = Color.Gray
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.onSessionExpiredConfirmed()
+                            onSessionExpired()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor
+                        )
+                    ) {
+                        Text("Đăng nhập lại")
+                    }
+                },
+                containerColor = DarkCard
+            )
         }
     }
 }
@@ -225,7 +232,7 @@ private fun SpecialEventsCarousel(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp) // Giảm từ 12.dp xuống 8.dp
     ) {
         SectionHeader("Sự kiện đặc sắc", showViewAll = false)
 
@@ -272,7 +279,7 @@ private fun SpecialEventsCarousel(
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
-                            .size(8.dp)
+                            .size(6.dp) // Giảm size dot từ 8.dp xuống 6.dp
                             .background(color = color, shape = CircleShape)
                     )
                 }

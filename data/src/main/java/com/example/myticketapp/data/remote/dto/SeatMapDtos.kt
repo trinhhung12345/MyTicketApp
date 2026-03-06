@@ -68,3 +68,23 @@ fun SeatMapResponse.toDomain(ticketTypes: List<TicketTypeDto>): SeatMap {
         }
     )
 }
+
+fun TicketTypeDto.toDomain() = com.example.myticketapp.domain.model.TicketType(
+    id = id ?: 0,
+    name = name ?: "",
+    description = description ?: name ?: "",
+    color = color ?: "",
+    isFree = isFree ?: false,
+    price = price ?: 0L,
+    originalPrice = originalPrice ?: 0L,
+    maxQtyPerOrder = maxQtyPerOrder ?: 0,
+    minQtyPerOrder = minQtyPerOrder ?: 0,
+    quantity = quantity ?: 0,
+    remainingQuantity = remainingQuantity ?: 0,
+    startTime = startTime ?: "",
+    endTime = endTime ?: "",
+    position = position ?: 0,
+    status = status ?: "",
+    imageUrl = imageUrl ?: "",
+    showingId = showingId
+)
