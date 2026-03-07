@@ -9,13 +9,17 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.myticketapp.presentation.checkout.CheckoutScreen
 import com.example.myticketapp.presentation.auth.LoginScreen
 import com.example.myticketapp.presentation.auth.RegisterScreen
 import com.example.myticketapp.presentation.booking.BookingScreen
 import com.example.myticketapp.presentation.detail.EventDetailScreen
 import com.example.myticketapp.presentation.home.HomeScreen
+import com.example.myticketapp.presentation.tickets.MyTicketsScreen
+import com.example.myticketapp.presentation.tickets.OrderDetailScreen
 import com.example.myticketapp.presentation.profile.ProfileScreen
 import com.example.myticketapp.presentation.splash.SplashScreen
+import com.google.gson.Gson
 
 @Composable
 fun SetupNavGraph(
@@ -85,6 +89,14 @@ fun SetupNavGraph(
                 )
             }
 
+            composable(route = Screen.MyTickets.route) {
+                MyTicketsScreen(
+                    onNavigateToDetail = { orderId ->
+                        navController.navigate(Screen.OrderDetail.passId(orderId))
+                    }
+                )
+            }
+
             // 5. Màn hình Chi tiết Sự kiện
             composable(
                 route = Screen.EventDetail.route,
@@ -105,8 +117,44 @@ fun SetupNavGraph(
             composable(
                 route = Screen.Booking.route,
                 arguments = listOf(navArgument("showingId") { type = NavType.IntType })
-            ) {
+            ) { backStackEntry ->
+                val showingId = backStackEntry.arguments?.getInt("showingId") ?: 0
+                val bookingStateHandle = navController.previousBackStackEntry?.savedStateHandle
+                val eventName = bookingStateHandle?.get<String>("bookingEventName").orEmpty()
+                val showingTime = bookingStateHandle?.get<String>("bookingShowingTime").orEmpty()
+
                 BookingScreen(
+                    showingId = showingId,
+                    eventName = eventName,
+                    showingTime = showingTime,
+                    onBackClick = { navController.popBackStack() },
+                    onCheckout = { cart ->
+                        navController.currentBackStackEntry?.savedStateHandle?.set(
+                            "checkoutCartJson",
+                            Gson().toJson(cart)
+                        )
+                        navController.navigate(Screen.Checkout.route)
+                    }
+                )
+            }
+
+            composable(route = Screen.Checkout.route) {
+                val cartJson = navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>("checkoutCartJson")
+                    .orEmpty()
+
+                CheckoutScreen(
+                    cartJson = cartJson,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.OrderDetail.route,
+                arguments = listOf(navArgument("orderId") { type = NavType.IntType })
+            ) {
+                OrderDetailScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -125,3 +173,4 @@ fun SetupNavGraph(
         }
     }
 }
+

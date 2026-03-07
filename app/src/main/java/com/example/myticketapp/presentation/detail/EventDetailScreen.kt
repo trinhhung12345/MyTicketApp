@@ -101,6 +101,14 @@ private fun EventDetailContent(
     ) { mutableStateListOf<Int>() }
 
     var showShowingSelection by remember { mutableStateOf(false) }
+    val openBooking: (Showing) -> Unit = { showing ->
+        navController.currentBackStackEntry?.savedStateHandle?.set("bookingEventName", event.title)
+        navController.currentBackStackEntry?.savedStateHandle?.set(
+            "bookingShowingTime",
+            "${showing.startTime.formatToTime()} ${showing.startTime.formatToDate()}"
+        )
+        navController.navigate(Screen.Booking.passShowingId(showing.id))
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
 
@@ -327,9 +335,7 @@ private fun EventDetailContent(
                                 }
 
                                 Button(
-                                    onClick = { 
-                                        navController.navigate(Screen.Booking.passShowingId(showing.id))
-                                    },
+                                    onClick = { openBooking(showing) },
                                     enabled = showing.isSalable,
                                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
                                     shape = RoundedCornerShape(8.dp),
@@ -432,7 +438,7 @@ private fun EventDetailContent(
                     if (event.showings.size >= 2) {
                         showShowingSelection = true
                     } else if (event.showings.size == 1) {
-                        navController.navigate(Screen.Booking.passShowingId(event.showings[0].id))
+                        openBooking(event.showings[0])
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
@@ -449,7 +455,7 @@ private fun EventDetailContent(
                 onDismiss = { showShowingSelection = false },
                 onShowingSelected = { showing ->
                     showShowingSelection = false
-                    navController.navigate(Screen.Booking.passShowingId(showing.id))
+                    openBooking(showing)
                 }
             )
         }

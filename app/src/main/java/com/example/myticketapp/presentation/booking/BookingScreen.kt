@@ -41,7 +41,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.myticketapp.domain.model.CheckoutCart
+import com.example.myticketapp.domain.model.CheckoutSeatItem
 import com.example.myticketapp.domain.model.Section
+import com.example.myticketapp.domain.model.TicketOrderItem
 import com.example.myticketapp.presentation.home.formatVND
 import com.example.myticketapp.ui.theme.PrimaryPink
 
@@ -52,7 +55,11 @@ private val StageColor = Color(0xFFFFA500)
 
 @Composable
 fun BookingScreen(
+    showingId: Int,
+    eventName: String,
+    showingTime: String,
     onBackClick: () -> Unit,
+    onCheckout: (CheckoutCart) -> Unit,
     viewModel: BookingViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
@@ -76,8 +83,8 @@ fun BookingScreen(
         containerColor = BgColor,
         topBar = {
             BookingTopBar(
-                eventName = viewModel.eventName,
-                showingTime = viewModel.showingTime,
+                eventName = eventName.ifBlank { "Đặt vé" },
+                showingTime = showingTime,
                 cartCount = if (state.hasSeatMap) state.selectedSeats.size else state.totalTickets,
                 onBackClick = onBackClick,
                 onCartClick = { 
@@ -96,14 +103,32 @@ fun BookingScreen(
                     isExpanded = isCartExpanded,
                     onToggleExpand = { isCartExpanded = !isCartExpanded },
                     onRemoveSeat = { viewModel.removeSeat(it) },
-                    onCheckout = { /* TODO: Navigate to checkout */ }
+                    onCheckout = {
+                        onCheckout(
+                            state.toCheckoutCart(
+                                eventName = eventName,
+                                showingId = showingId,
+                                showingTime = showingTime,
+                                currentSectionName = currentSectionName
+                            )
+                        )
+                    }
                 )
             } 
             else if (!state.hasSeatMap) {
                 TicketListBottomBar(
                     totalTickets = state.totalTickets,
                     totalPrice = state.totalPrice,
-                    onCheckout = { /* TODO: Navigate to checkout */ }
+                    onCheckout = {
+                        onCheckout(
+                            state.toCheckoutCart(
+                                eventName = eventName,
+                                showingId = showingId,
+                                showingTime = showingTime,
+                                currentSectionName = currentSectionName
+                            )
+                        )
+                    }
                 )
             }
         }
@@ -167,14 +192,56 @@ fun BookingScreen(
     if (state.hasSeatMap) {
         clickedSection?.let { section ->
             SeatSelectionDialog(
-                eventName = viewModel.eventName,
-                showingTime = viewModel.showingTime,
+                eventName = eventName.ifBlank { "Đặt vé" },
+                showingTime = showingTime,
                 section = section,
                 selectedSeats = state.selectedSeats.toSet(),
                 onSeatToggle = { seat -> viewModel.toggleSeat(seat, section) },
                 onDismiss = { clickedSection = null }
             )
         }
+    }
+}
+
+private fun BookingState.toCheckoutCart(
+    eventName: String,
+    showingId: Int,
+    showingTime: String,
+    currentSectionName: String
+): CheckoutCart {
+    return if (hasSeatMap) {
+        CheckoutCart(
+            eventName = eventName,
+            showingId = showingId,
+            showingTime = showingTime,
+            hasSeatMap = true,
+            selectedSeats = selectedSeats.map { seat ->
+                CheckoutSeatItem(
+                    id = seat.id,
+                    code = seat.code,
+                    price = seat.price,
+                    sectionName = currentSectionName
+                )
+            }
+        )
+    } else {
+        CheckoutCart(
+            eventName = eventName,
+            showingId = showingId,
+            showingTime = showingTime,
+            hasSeatMap = false,
+            selectedTickets = ticketTypes
+                .filter { (ticketQuantities[it.id] ?: 0) > 0 }
+                .sortedBy { it.position }
+                .map { ticketType ->
+                    TicketOrderItem(
+                        ticketTypeId = ticketType.id,
+                        ticketTypeName = ticketType.name,
+                        price = ticketType.price,
+                        quantity = ticketQuantities[ticketType.id] ?: 0
+                    )
+                }
+        )
     }
 }
 

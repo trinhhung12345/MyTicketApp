@@ -27,8 +27,11 @@ fun MainBottomBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Chỉ hiện Bottom Bar ở Home và Profile
-    if (currentRoute == Screen.Home.route || currentRoute == Screen.Profile.route) {
+    if (
+        currentRoute == Screen.Home.route ||
+        currentRoute == Screen.MyTickets.route ||
+        currentRoute == Screen.Profile.route
+    ) {
         NavigationBar(
             containerColor = DarkCard.copy(alpha = 0.95f),
             contentColor = Color.Gray
@@ -62,8 +65,14 @@ fun MainBottomBar(navController: NavController) {
                 )
             )
             NavigationBarItem(
-                selected = currentRoute == "tickets",
-                onClick = { /* TODO: Navigate to My Tickets */ },
+                selected = currentRoute == Screen.MyTickets.route,
+                onClick = {
+                    navController.navigate(Screen.MyTickets.route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 icon = { Icon(Icons.Default.ConfirmationNumber, null) },
                 label = { Text("Vé của tôi") },
                 colors = NavigationBarItemDefaults.colors(

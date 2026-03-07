@@ -46,10 +46,6 @@ class BookingViewModel @Inject constructor(
     private val _state = mutableStateOf(BookingState())
     val state: State<BookingState> = _state
 
-    // Tạm thời hardcode data sự kiện cho Header (sau này có thể truyền qua NavArgument)
-    val eventName = "TOKYO GIRLS COLLECTION VIETNAM 2026..."
-    val showingTime = "Suất diễn: 2026-03-29 18:35"
-
     init {
         val showingId = savedStateHandle.get<Int>("showingId") ?: 4 // Default là 4 để test
         fetchBookingData(showingId)

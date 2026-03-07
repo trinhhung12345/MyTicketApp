@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.gson)
+    implementation("com.google.zxing:core:3.5.3")
 
     // Hilt
     implementation(libs.hilt.android)
