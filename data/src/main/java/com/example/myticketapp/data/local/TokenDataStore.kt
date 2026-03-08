@@ -30,15 +30,17 @@ class TokenDataStore @Inject constructor(
         val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         val USER_EMAIL_KEY = stringPreferencesKey("user_email")
         val USER_ADDRESS_KEY = stringPreferencesKey("user_address")
+        val USER_ROLE_KEY = stringPreferencesKey("user_role")
     }
 
     /**
-     * Lưu access token và email vào DataStore
+     * Lưu access token, email và role vào DataStore
      */
-    suspend fun saveToken(token: String, email: String) {
+    suspend fun saveToken(token: String, email: String, role: String = "USER") {
         context.dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN_KEY] = token
             preferences[USER_EMAIL_KEY] = email
+            preferences[USER_ROLE_KEY] = role
         }
     }
 
@@ -97,12 +99,28 @@ class TokenDataStore @Inject constructor(
         }
 
     /**
+     * Đọc role user từ DataStore dưới dạng Flow
+     */
+    val userRole: Flow<String> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[USER_ROLE_KEY] ?: "USER"
+        }
+
+    /**
      * Xóa token và email khỏi DataStore (dùng khi logout)
      */
     suspend fun clearToken() {
         context.dataStore.edit { preferences ->
             preferences.remove(ACCESS_TOKEN_KEY)
             preferences.remove(USER_EMAIL_KEY)
+            preferences.remove(USER_ROLE_KEY)
         }
     }
 

@@ -53,17 +53,17 @@ fun MainBottomBar(navController: NavController) {
                     indicatorColor = Color.Transparent
                 )
             )
-            NavigationBarItem(
-                selected = currentRoute == "search",
-                onClick = { /* TODO: Navigate to Search */ },
-                icon = { Icon(Icons.Default.Search, null) },
-                label = { Text("Tìm kiếm") },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryPink,
-                    selectedTextColor = PrimaryPink,
-                    indicatorColor = Color.Transparent
-                )
-            )
+//            NavigationBarItem(
+//                selected = currentRoute == "search",
+//                onClick = { /* TODO: Navigate to Search */ },
+//                icon = { Icon(Icons.Default.Search, null) },
+//                label = { Text("Tìm kiếm") },
+//                colors = NavigationBarItemDefaults.colors(
+//                    selectedIconColor = PrimaryPink,
+//                    selectedTextColor = PrimaryPink,
+//                    indicatorColor = Color.Transparent
+//                )
+//            )
             NavigationBarItem(
                 selected = currentRoute == Screen.MyTickets.route,
                 onClick = {

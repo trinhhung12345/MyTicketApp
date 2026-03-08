@@ -1,4 +1,4 @@
-package com.example.myticketapp.di
+package com.example.myticketapp.data.remote
 
 import com.example.myticketapp.data.local.TokenDataStore
 import com.example.myticketapp.domain.utils.SessionManager
@@ -19,22 +19,20 @@ class AuthInterceptor @Inject constructor(
     private val tokenDataStore: TokenDataStore,
     private val sessionManager: SessionManager
 ) : Interceptor {
-    
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val requestBuilder = chain.request().newBuilder()
-        
-        // Lấy token từ DataStore (blocking vì interceptor không phải suspend function)
+
         val token = runBlocking {
             tokenDataStore.accessToken.first()
         }
-        
+
         if (!token.isNullOrEmpty()) {
             requestBuilder.addHeader("Authorization", "Bearer $token")
         }
-        
+
         val response = chain.proceed(requestBuilder.build())
 
-        // Phát hiện 401 → phát sự kiện session expired toàn cục
         if (response.code == 401) {
             sessionManager.onSessionExpired()
         }

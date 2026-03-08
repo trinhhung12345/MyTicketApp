@@ -76,7 +76,7 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getEventDetail(id: Int): Flow<Resource<Event>> = flow {
+override fun getEventDetail(id: Int): Flow<Resource<Event>> = flow {
         emit(Resource.Loading())
         try {
             val response = api.getEventDetail(id)
@@ -106,6 +106,64 @@ class HomeRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.d(TAG, "getEventDetail Exception: ${e.message}")
+            emit(Resource.Error(e.message ?: "Lỗi mạng"))
+        }
+    }
+
+    override fun getEventsByCategory(categoryId: Int): Flow<Resource<List<Event>>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = api.getEventsByCategory(categoryId)
+            Log.d(TAG, "getEventsByCategory response: code=${response.code}, message=${response.message}")
+            when (response.code) {
+                200 -> {
+                    emit(Resource.Success(response.data?.map { it.toDomain() } ?: emptyList()))
+                }
+                401 -> {
+                    Log.d(TAG, "getEventsByCategory: TOKEN_EXPIRED (response.code)")
+                    emit(Resource.Error("TOKEN_EXPIRED"))
+                }
+                else -> emit(Resource.Error(response.message ?: "Lỗi tải sự kiện theo thể loại"))
+            }
+        } catch (e: HttpException) {
+            Log.d(TAG, "getEventsByCategory HttpException: code=${e.code()}, message=${e.message}")
+            if (e.code() == 401) {
+                Log.d(TAG, "getEventsByCategory: TOKEN_EXPIRED (HttpException)")
+                emit(Resource.Error("TOKEN_EXPIRED"))
+            } else {
+                emit(Resource.Error(e.message ?: "Lỗi HTTP"))
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "getEventsByCategory Exception: ${e.message}")
+            emit(Resource.Error(e.message ?: "Lỗi mạng"))
+        }
+    }
+
+    override fun searchEvents(keyword: String): Flow<Resource<List<Event>>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = api.searchEvents(keyword)
+            Log.d(TAG, "searchEvents response: code=${response.code}, message=${response.message}, keyword=$keyword")
+            when (response.code) {
+                200 -> {
+                    emit(Resource.Success(response.data?.map { it.toDomain() } ?: emptyList()))
+                }
+                401 -> {
+                    Log.d(TAG, "searchEvents: TOKEN_EXPIRED (response.code)")
+                    emit(Resource.Error("TOKEN_EXPIRED"))
+                }
+                else -> emit(Resource.Error(response.message ?: "Lỗi tìm kiếm"))
+            }
+        } catch (e: HttpException) {
+            Log.d(TAG, "searchEvents HttpException: code=${e.code()}, message=${e.message}")
+            if (e.code() == 401) {
+                Log.d(TAG, "searchEvents: TOKEN_EXPIRED (HttpException)")
+                emit(Resource.Error("TOKEN_EXPIRED"))
+            } else {
+                emit(Resource.Error(e.message ?: "Lỗi HTTP"))
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "searchEvents Exception: ${e.message}")
             emit(Resource.Error(e.message ?: "Lỗi mạng"))
         }
     }

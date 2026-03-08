@@ -19,21 +19,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ConfirmationNumber
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.myticketapp.domain.model.Event
+import com.example.myticketapp.presentation.notifications.NotificationBell
 import com.example.myticketapp.ui.theme.PrimaryPink
 
 // Colors từ HTML
@@ -54,7 +48,12 @@ val DarkCard = Color(0xFF161B22)
 // --- 1. Top Bar & Search ---
 @Composable
 fun HomeTopBar(
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onEventClick: (Int) -> Unit = {},
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
+    isSearching: Boolean = false,
+    searchResults: List<Event> = emptyList()
 ) {
     Column(
         modifier = Modifier
@@ -98,12 +97,11 @@ fun HomeTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.NotificationsNone,
-                    contentDescription = "Notifications",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
+                // Notification Bell with badge
+                NotificationBell(
+                    onNavigateToEvent = onEventClick
                 )
+                
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -121,41 +119,15 @@ fun HomeTopBar(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp)) // Giảm thêm một chút khoảng cách tới thanh Search
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Search Bar
-        var searchQuery by remember { mutableStateOf("") }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(DarkCard, RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search",
-                tint = Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            BasicTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                textStyle = LocalTextStyle.current.copy(color = Color.White, fontSize = 14.sp),
-                decorationBox = { innerTextField ->
-                    if (searchQuery.isEmpty()) {
-                        Text(
-                            text = "Tìm kiếm sự kiện,...",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    }
-                    innerTextField()
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        SearchBarWithSuggestions(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            isLoading = isSearching,
+            searchResults = searchResults,
+            onEventClick = onEventClick
+        )
     }
 }
 
@@ -202,7 +174,8 @@ fun CategoryTabs(
 @Composable
 fun SectionHeader(
     title: String,
-    showViewAll: Boolean = true
+    showViewAll: Boolean = true,
+    onViewAllClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -233,7 +206,8 @@ fun SectionHeader(
                 text = "Xem tất cả →",
                 color = PrimaryPink,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable { onViewAllClick?.invoke() }
             )
         }
     }

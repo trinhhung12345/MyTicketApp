@@ -91,6 +91,17 @@ dependencies {
     implementation(libs.gson)
     implementation("com.google.zxing:core:3.5.3")
 
+    // Room Database
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
+
+    // Krossbow STOMP
+    val krossbow_version = "7.0.0"
+    implementation("org.hildan.krossbow:krossbow-stomp-core:$krossbow_version")
+    implementation("org.hildan.krossbow:krossbow-websocket-okhttp:$krossbow_version")
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

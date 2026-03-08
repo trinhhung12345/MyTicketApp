@@ -35,22 +35,32 @@ fun HomeScreen(
     onEventClick: (Int) -> Unit,
     onProfileClick: () -> Unit,
     onSessionExpired: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    onCategoryViewAllClick: (Int, String) -> Unit,
+    onChatClick: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+    searchViewModel: SearchViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
+    val searchQuery by searchViewModel.searchQuery.collectAsState()
+    val searchState by searchViewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf("Tất cả") }
     val colorScheme = MaterialTheme.colorScheme
     val primaryColor = colorScheme.primary
 
-    // Sử dụng Box thay vì Scaffold lồng nhau để tránh paddingValues bị double hoặc tính toán sai
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top Bar
-            HomeTopBar(onProfileClick = onProfileClick)
+            HomeTopBar(
+                onProfileClick = onProfileClick,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchViewModel.onSearchQueryChange(it) },
+                isSearching = searchState.isLoading,
+                searchResults = searchState.results,
+                onEventClick = onEventClick
+            )
 
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -71,14 +81,26 @@ fun HomeScreen(
                             CategoryTabs(
                                 categories = state.categories.map { it.name },
                                 selectedCategory = selectedTab,
-                                onSelect = { selectedTab = it }
+                                onSelect = { categoryName ->
+                                    selectedTab = categoryName
+                                    val categoryId = state.categories
+                                        .find { it.name == categoryName }
+                                        ?.id
+                                        ?: 0
+                                    onCategoryViewAllClick(categoryId, categoryName)
+                                }
                             )
                         }
 
                         // 2. Sự kiện Nổi Bật (Banner)
                         if (state.featuredEvents.isNotEmpty()) {
                             item {
-                                SectionHeader("Sự kiện nổi bật")
+                                SectionHeader(
+                                    title = "Sự kiện nổi bật",
+                                    onViewAllClick = {
+                                        onCategoryViewAllClick(0, "Tất cả sự kiện")
+                                    }
+                                )
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -110,7 +132,16 @@ fun HomeScreen(
                         state.eventsByCategory.forEach { (categoryName, events) ->
                             item {
                                 Column(modifier = Modifier.padding(top = 16.dp)) { // Giảm top padding từ 24.dp xuống 16.dp
-                                    SectionHeader(categoryName)
+                                    SectionHeader(
+                                        title = categoryName,
+                                        showViewAll = true,
+                                        onViewAllClick = {
+                                            // Tìm categoryId tương ứng với categoryName
+                                            val catId = state.categories.find { it.name == categoryName }?.id ?: 0
+                                            val catName = categoryName
+                                            onCategoryViewAllClick(catId, catName)
+                                        }
+                                    )
                                     LazyRow(
                                         contentPadding = PaddingValues(horizontal = 16.dp),
                                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -134,7 +165,7 @@ fun HomeScreen(
 
         // FAB - Đưa vào Box để nổi lên trên Column
         FloatingActionButton(
-            onClick = { /* Mở chat */ },
+            onClick = { onChatClick() },
             containerColor = primaryColor,
             contentColor = colorScheme.onPrimary,
             shape = MaterialTheme.shapes.extraLarge,

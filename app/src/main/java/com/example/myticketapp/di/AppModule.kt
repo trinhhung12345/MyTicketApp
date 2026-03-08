@@ -1,9 +1,16 @@
 package com.example.myticketapp.di
 
+import android.content.Context
 import com.example.myticketapp.BuildConfig
+import com.example.myticketapp.data.local.TokenDataStore
+import com.example.myticketapp.data.local.room.NotificationDao
+import com.example.myticketapp.data.remote.AuthInterceptor
+import com.example.myticketapp.data.remote.socket.StompSocketManager
+import com.example.myticketapp.domain.repository.SocketService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -19,7 +26,6 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            // Chỉ in log API khi đang chạy debug, lên production sẽ tắt để bảo mật
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
@@ -37,10 +43,24 @@ object AppModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            // Truy cập biến môi trường API_BASE_URL từ .env thông qua BuildConfig
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSocketService(
+        okHttpClient: OkHttpClient,
+        notificationDao: NotificationDao,
+        tokenDataStore: TokenDataStore
+    ): SocketService {
+        val wsUrl = BuildConfig.API_BASE_URL
+            .replace("https://", "wss://")
+            .replace("http://", "ws://")
+            .trimEnd('/')
+            .plus("/ws")
+        return StompSocketManager(okHttpClient, notificationDao, tokenDataStore, wsUrl)
     }
 }
