@@ -5,9 +5,12 @@ package com.example.myticketapp.domain.model
  */
 data class UserProfile(
     val id: Int,
-    val code: String,
-    val name: String,
-    val email: String,
-    val phone: String,
-    val roleName: String
+    val code: String = "",
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val roleName: String = "USER",
+    val address: String = "",
+    val birthday: String = "",
+    val status: Int = 1
 )

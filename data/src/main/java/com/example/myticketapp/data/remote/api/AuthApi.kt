@@ -1,6 +1,7 @@
 package com.example.myticketapp.data.remote.api
 
 import com.example.myticketapp.data.remote.dto.BaseResponse
+import com.example.myticketapp.data.remote.dto.ForgotPasswordRequest
 import com.example.myticketapp.data.remote.dto.LoginRequest
 import com.example.myticketapp.data.remote.dto.RegisterRequestDto
 import com.example.myticketapp.data.remote.dto.SendOtpRequest
@@ -17,4 +18,7 @@ interface AuthApi {
 
     @POST("auth/register")
     suspend fun register(@Body request: RegisterRequestDto): BaseResponse<UserDto>
+
+    @POST("forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): BaseResponse<Any>
 }

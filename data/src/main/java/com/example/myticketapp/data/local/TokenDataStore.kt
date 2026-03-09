@@ -29,7 +29,10 @@ class TokenDataStore @Inject constructor(
     companion object {
         val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        val USER_NAME_KEY = stringPreferencesKey("user_name")
+        val USER_PHONE_KEY = stringPreferencesKey("user_phone")
         val USER_ADDRESS_KEY = stringPreferencesKey("user_address")
+        val USER_BIRTHDAY_KEY = stringPreferencesKey("user_birthday")
         val USER_ROLE_KEY = stringPreferencesKey("user_role")
     }
 
@@ -50,6 +53,25 @@ class TokenDataStore @Inject constructor(
     suspend fun saveAddress(address: String) {
         context.dataStore.edit { preferences ->
             preferences[USER_ADDRESS_KEY] = address
+        }
+    }
+
+    /**
+     * Lưu thông tin profile user vào DataStore
+     */
+    suspend fun saveUserProfile(
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        birthday: String
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_NAME_KEY] = name
+            preferences[USER_EMAIL_KEY] = email
+            preferences[USER_PHONE_KEY] = phone
+            preferences[USER_ADDRESS_KEY] = address
+            preferences[USER_BIRTHDAY_KEY] = birthday
         }
     }
 
@@ -96,6 +118,42 @@ class TokenDataStore @Inject constructor(
         }
         .map { preferences ->
             preferences[USER_EMAIL_KEY]
+        }
+
+    val userName: Flow<String?> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[USER_NAME_KEY]
+        }
+
+    val userPhone: Flow<String?> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[USER_PHONE_KEY]
+        }
+
+    val userBirthday: Flow<String?> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[USER_BIRTHDAY_KEY]
         }
 
     /**
