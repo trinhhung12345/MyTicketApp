@@ -1,5 +1,11 @@
 package com.example.myticketapp.presentation.home
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +23,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myticketapp.domain.model.Event
@@ -63,9 +71,7 @@ fun HomeScreen(
             )
 
             if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = primaryColor)
-                }
+                HomeLoadingSkeleton(modifier = Modifier.fillMaxSize())
             } else {
                 PullToRefreshBox(
                     isRefreshing = state.isRefreshing,
@@ -219,6 +225,136 @@ fun HomeScreen(
             )
         }
     }
+}
+
+@Composable
+private fun HomeLoadingSkeleton(
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "home_skeleton_transition")
+    val pulseAlpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0.95f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "home_skeleton_alpha"
+    )
+
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                repeat(4) {
+                    SkeletonBlock(
+                        modifier = Modifier
+                            .height(32.dp)
+                            .weight(1f),
+                        shape = CircleShape,
+                        alpha = pulseAlpha
+                    )
+                }
+            }
+        }
+
+        item {
+            SkeletonSectionHeader(alpha = pulseAlpha)
+            SkeletonHorizontalCards(
+                alpha = pulseAlpha,
+                cardCount = 2,
+                cardWidth = 280.dp,
+                cardHeight = 190.dp
+            )
+        }
+
+        item {
+            SkeletonSectionHeader(alpha = pulseAlpha)
+            SkeletonHorizontalCards(
+                alpha = pulseAlpha,
+                cardCount = 2,
+                cardWidth = 170.dp,
+                cardHeight = 190.dp
+            )
+        }
+
+        item {
+            SkeletonSectionHeader(alpha = pulseAlpha)
+            SkeletonHorizontalCards(
+                alpha = pulseAlpha,
+                cardCount = 3,
+                cardWidth = 170.dp,
+                cardHeight = 190.dp
+            )
+        }
+    }
+}
+
+@Composable
+private fun SkeletonSectionHeader(alpha: Float) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SkeletonBlock(
+            modifier = Modifier
+                .height(20.dp)
+                .width(150.dp),
+            alpha = alpha
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        SkeletonBlock(
+            modifier = Modifier
+                .height(16.dp)
+                .width(72.dp),
+            alpha = alpha
+        )
+    }
+}
+
+@Composable
+private fun SkeletonHorizontalCards(
+    alpha: Float,
+    cardCount: Int,
+    cardWidth: Dp,
+    cardHeight: Dp
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(cardCount) {
+            SkeletonBlock(
+                modifier = Modifier.size(width = cardWidth, height = cardHeight),
+                shape = MaterialTheme.shapes.large,
+                alpha = alpha
+            )
+        }
+    }
+}
+
+@Composable
+private fun SkeletonBlock(
+    modifier: Modifier,
+    alpha: Float,
+    shape: Shape = MaterialTheme.shapes.medium
+) {
+    Box(
+        modifier = modifier.background(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha),
+            shape = shape
+        )
+    )
 }
 
 @Composable

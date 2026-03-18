@@ -1,12 +1,11 @@
 package com.example.myticketapp.presentation.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -32,10 +34,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,10 +60,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myticketapp.presentation.home.DarkBg
 import com.example.myticketapp.presentation.home.DarkCard
 import com.example.myticketapp.ui.theme.PrimaryPink
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Màn hình Profile hiển thị thông tin cá nhân của user
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBackClick: () -> Unit,
@@ -64,7 +76,6 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
-    var tempAddress by remember(state.address) { mutableStateOf(state.address) }
 
     Box(
         modifier = Modifier
@@ -81,6 +92,17 @@ fun ProfileScreen(
         }
 
         val profile = state.profile ?: return@Box
+        var tempName by remember(profile) { mutableStateOf(profile.name) }
+        var tempEmail by remember(profile) { mutableStateOf(profile.email) }
+        var tempPhone by remember(profile) { mutableStateOf(profile.phone) }
+        var tempAddress by remember(profile, state.address) {
+            mutableStateOf(profile.address.ifBlank { state.address })
+        }
+        var tempBirthday by remember(profile) { mutableStateOf(profile.birthday) }
+        var oldPassword by remember { mutableStateOf("") }
+        var newPassword by remember { mutableStateOf("") }
+        var confirmPassword by remember { mutableStateOf("") }
+        var showBirthdayDatePicker by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
@@ -141,7 +163,7 @@ fun ProfileScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = profile.name.firstOrNull()?.uppercase() ?: "U",
+                                text = tempName.firstOrNull()?.uppercase() ?: "U",
                                 color = PrimaryPink,
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Bold
@@ -168,7 +190,7 @@ fun ProfileScreen(
 
                     // Name
                     Text(
-                        text = profile.name,
+                        text = tempName,
                         color = Color.White,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
@@ -176,7 +198,7 @@ fun ProfileScreen(
 
                     // Email
                     Text(
-                        text = profile.email,
+                        text = tempEmail,
                         color = Color.White.copy(0.8f),
                         fontSize = 14.sp,
                         fontStyle = FontStyle.Italic
@@ -222,21 +244,23 @@ fun ProfileScreen(
                         // Fields
                         ProfileTextField(
                             label = "Họ và tên",
-                            value = profile.name,
-                            readOnly = true
+                            value = tempName,
+                            onValueChange = { tempName = it },
+                            placeholder = "Nhập họ và tên"
                         )
                         ProfileTextField(
                             label = "Email",
-                            value = profile.email,
-                            readOnly = true
+                            value = tempEmail,
+                            onValueChange = { tempEmail = it },
+                            placeholder = "Nhập email"
                         )
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             ProfileTextField(
                                 label = "Số điện thoại",
-                                value = profile.phone,
-                                readOnly = true,
+                                value = tempPhone,
+                                onValueChange = { tempPhone = it },
                                 modifier = Modifier.weight(1f)
                             )
                             ProfileTextField(
@@ -247,9 +271,29 @@ fun ProfileScreen(
                             )
                         }
 
-                        // Address field (editable)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showBirthdayDatePicker = true }
+                        ) {
+                            ProfileTextField(
+                                label = "Ngày sinh",
+                                value = tempBirthday,
+                                readOnly = true,
+                                enabled = false,
+                                placeholder = "Chọn ngày sinh",
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Chọn ngày sinh"
+                                    )
+                                }
+                            )
+                        }
+
+                        // Address field
                         ProfileTextField(
-                            label = "Địa chỉ (Lưu cục bộ)",
+                            label = "Địa chỉ",
                             value = tempAddress,
                             onValueChange = { tempAddress = it },
                             placeholder = "Nhập địa chỉ của bạn"
@@ -257,19 +301,121 @@ fun ProfileScreen(
 
                         // Save button
                         Button(
-                            onClick = { viewModel.saveAddress(tempAddress) },
+                            onClick = {
+                                viewModel.updateProfile(
+                                    name = tempName,
+                                    email = tempEmail,
+                                    phone = tempPhone,
+                                    address = tempAddress,
+                                    birthday = tempBirthday
+                                )
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = PrimaryPink
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !state.isSaving
                         ) {
                             Text(
-                                text = "Lưu thay đổi",
+                                text = if (state.isSaving) "Đang lưu..." else "Lưu thay đổi",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
+                            )
+                        }
+
+                        if (state.error.isNotBlank()) {
+                            Text(
+                                text = state.error,
+                                color = Color(0xFFFF6B6B),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFF30363D), RoundedCornerShape(16.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = PrimaryPink
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Đổi mật khẩu",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        ProfilePasswordField(
+                            label = "Mật khẩu cũ",
+                            value = oldPassword,
+                            onValueChange = { oldPassword = it },
+                            placeholder = "Nhập mật khẩu cũ"
+                        )
+
+                        ProfilePasswordField(
+                            label = "Mật khẩu mới",
+                            value = newPassword,
+                            onValueChange = { newPassword = it },
+                            placeholder = "Nhập mật khẩu mới"
+                        )
+
+                        ProfilePasswordField(
+                            label = "Xác nhận mật khẩu mới",
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            placeholder = "Nhập lại mật khẩu mới"
+                        )
+
+                        Button(
+                            onClick = {
+                                viewModel.changePassword(
+                                    oldPassword = oldPassword,
+                                    newPassword = newPassword,
+                                    confirmPassword = confirmPassword
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !state.isChangingPassword
+                        ) {
+                            Text(
+                                text = if (state.isChangingPassword) {
+                                    "Đang đổi mật khẩu..."
+                                } else {
+                                    "Đổi mật khẩu"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+
+                        if (state.passwordError.isNotBlank()) {
+                            Text(
+                                text = state.passwordError,
+                                color = Color(0xFFFF6B6B),
+                                fontSize = 13.sp
                             )
                         }
                     }
@@ -299,6 +445,140 @@ fun ProfileScreen(
                         fontSize = 16.sp
                     )
                 }
+            }
+        }
+
+        if (state.showUpdateSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissUpdateSuccessDialog() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = PrimaryPink
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Cập nhật thành công",
+                        color = Color.White
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Thông tin cá nhân đã được cập nhật.",
+                        color = Color.Gray
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.dismissUpdateSuccessDialog() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryPink
+                        )
+                    ) {
+                        Text("OK")
+                    }
+                },
+                containerColor = DarkCard
+            )
+        }
+
+        if (state.showChangePasswordSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    viewModel.dismissChangePasswordSuccessDialog()
+                    oldPassword = ""
+                    newPassword = ""
+                    confirmPassword = ""
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = PrimaryPink
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Đổi mật khẩu thành công",
+                        color = Color.White
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Mật khẩu của bạn đã được cập nhật.",
+                        color = Color.Gray
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.dismissChangePasswordSuccessDialog()
+                            oldPassword = ""
+                            newPassword = ""
+                            confirmPassword = ""
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink)
+                    ) {
+                        Text("OK")
+                    }
+                },
+                containerColor = DarkCard
+            )
+        }
+
+        if (showBirthdayDatePicker) {
+            val initialDateMillis = parseBirthdayToMillis(tempBirthday)
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = initialDateMillis
+            )
+
+            DatePickerDialog(
+                onDismissRequest = { showBirthdayDatePicker = false },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { selectedMillis ->
+                                tempBirthday = formatBirthdayFromMillis(selectedMillis)
+                            }
+                            showBirthdayDatePicker = false
+                        },
+                        enabled = datePickerState.selectedDateMillis != null,
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPink)
+                    ) {
+                        Text("Xác nhận")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBirthdayDatePicker = false }) {
+                        Text("Hủy", color = Color.Gray)
+                    }
+                },
+                colors = DatePickerDefaults.colors(containerColor = DarkCard)
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    showModeToggle = false,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = DarkCard,
+                        titleContentColor = Color.White,
+                        headlineContentColor = Color.White,
+                        weekdayContentColor = Color.Gray,
+                        subheadContentColor = Color.Gray,
+                        dayContentColor = Color.White,
+                        disabledDayContentColor = Color.Gray.copy(alpha = 0.4f),
+                        selectedDayContentColor = Color.White,
+                        selectedDayContainerColor = PrimaryPink,
+                        todayContentColor = PrimaryPink,
+                        todayDateBorderColor = PrimaryPink,
+                        yearContentColor = Color.White,
+                        selectedYearContentColor = Color.White,
+                        selectedYearContainerColor = PrimaryPink,
+                        currentYearContentColor = PrimaryPink,
+                        navigationContentColor = PrimaryPink
+                    )
+                )
             }
         }
 
@@ -342,4 +622,23 @@ fun ProfileScreen(
             )
         }
     }
+}
+
+private fun parseBirthdayToMillis(rawDate: String): Long? {
+    if (rawDate.isBlank()) return null
+
+    return runCatching {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+            isLenient = false
+        }
+        formatter.parse(rawDate)?.time
+    }.getOrNull()
+}
+
+private fun formatBirthdayFromMillis(dateMillis: Long): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    return formatter.format(Date(dateMillis))
 }

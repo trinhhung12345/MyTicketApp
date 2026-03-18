@@ -2,6 +2,7 @@ package com.example.myticketapp.data.repository
 
 import com.example.myticketapp.data.local.TokenDataStore
 import com.example.myticketapp.data.remote.api.AuthApi
+import com.example.myticketapp.data.remote.dto.ForgotPasswordRequest
 import com.example.myticketapp.data.remote.dto.LoginRequest
 import com.example.myticketapp.data.remote.dto.RegisterRequestDto
 import com.example.myticketapp.data.remote.dto.SendOtpRequest
@@ -30,6 +31,24 @@ class AuthRepositoryImpl @Inject constructor(
                 emit(Resource.Success(response.data.toDomainModel()))
             } else {
                 emit(Resource.Error(response.message ?: "Lỗi không xác định từ server"))
+            }
+        } catch (e: HttpException) {
+            emit(Resource.Error(e.localizedMessage ?: "Lỗi kết nối máy chủ"))
+        } catch (e: IOException) {
+            emit(Resource.Error("Không thể kết nối Internet. Vui lòng kiểm tra mạng!"))
+        } catch (e: Exception) {
+            emit(Resource.Error("Đã xảy ra lỗi: ${e.message}"))
+        }
+    }
+
+    override fun forgotPassword(email: String): Flow<Resource<String>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = api.forgotPassword(ForgotPasswordRequest(email))
+            if (response.code == 200) {
+                emit(Resource.Success(response.message.ifBlank { "New password has been sent to your email" }))
+            } else {
+                emit(Resource.Error(response.message.ifBlank { "Gửi yêu cầu quên mật khẩu thất bại" }))
             }
         } catch (e: HttpException) {
             emit(Resource.Error(e.localizedMessage ?: "Lỗi kết nối máy chủ"))

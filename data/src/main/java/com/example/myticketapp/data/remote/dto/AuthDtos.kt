@@ -64,3 +64,7 @@ data class RegisterRequestDto(
     val businessRole: Int = 1,
     val purpose: String = "1"
 )
+
+data class ForgotPasswordRequest(
+    val email: String
+)
