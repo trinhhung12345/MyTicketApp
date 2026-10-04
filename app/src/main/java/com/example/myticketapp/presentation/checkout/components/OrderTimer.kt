@@ -46,7 +46,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-private const val ORDER_TIMEOUT_MS = 60_000L
+private const val ORDER_TIMEOUT_MS = 300_000L
 private val TailwindOrange400 = Color(0xFFFB923C)
 private val TailwindOrange500 = Color(0xFFF97316)
 private val TailwindOrange950 = Color(0xFF431407)

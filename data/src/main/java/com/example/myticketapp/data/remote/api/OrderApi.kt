@@ -10,7 +10,7 @@ import retrofit2.http.Path
 import retrofit2.http.POST
 
 interface OrderApi {
-    @GET("orders")
+    @GET("orders/my-orders")
     suspend fun getMyOrders(): BaseResponse<List<OrderDto>>
 
     @GET("orders/{id}")
